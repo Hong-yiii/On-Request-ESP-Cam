@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include <header.h>
 
 // put function declarations here:
 int myFunction(int, int);
