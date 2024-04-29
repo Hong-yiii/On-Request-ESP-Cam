@@ -1,18 +1,22 @@
 #include <header.h>
 
-// put function declarations here:
-int myFunction(int, int);
+WiFiClientSecure secured_client;
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  Serial.begin(11200);
+  WiFi.begin(ssid, password);
+  while( WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wifi is not WIFIing");
+    delay(10000);
+  }
+  // display connected when it has connected
+  if( WiFi.status() == WL_CONNECTED) {
+    Serial.println("WIFI is WIFIing");
+  }
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-}
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+
 }
