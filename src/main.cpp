@@ -6,6 +6,13 @@ void HandleNewMessages(int numNewMessages);
 bool UpdateSingularPhoto(String chat_id);
 bool UpdateRecurringPhoto(String chat_id);
 
+enum botStateDtype {
+  AWAITING_COMMAND,
+  DEFAULT_POLLING_STATE,
+  USER_INTERRUPT 
+};
+
+botStateDtype BotState = DEFAULT_POLLING_STATE; //initialize to default state
 
 WiFiClientSecure secured_client;
 UniversalTelegramBot bot(BotToken, secured_client);
@@ -29,7 +36,7 @@ void setup() {
 void loop() {
   if (millis() - last_bot_poll_time > 20000) { // 20 seconds after previous poll
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-    while(numNewMessages) {
+    if (numNewMessages > 0) {
       
       #ifdef Debugging_mode_on
       Serial.println("Response recieved from API, new Messages have been received");
@@ -55,61 +62,81 @@ void loop() {
 }
 
 void HandleNewMessages(int numNewMessages) {
-  for (int i = 0; i < numNewMessages; i++) {
-    String chat_id = String(bot.messages[i].chat_id);
-    String UserText = bot.messages[i].text;
-    // chat_id is the identify user and usertext is user's text input 
+  // respond based of BotState
+  switch(BotState) {
+    case DEFAULT_POLLING_STATE:
 
-    if (UserText == "/help") {
-      String HelpMessage = "1. /function 1 (...) \n"
-                           "2. /function 1 (...) \n"
-                           "3. /function 1 (...) \n";
-      bool BotMessageStatus = bot.sendMessage(chat_id, HelpMessage, ""); //return value is if the messages sent succesfully
+      if (numNewMessages > 0) {
+        int lastMessageIndex = numNewMessages - 1; //we are only going to process the latest text in the batch
+        String chat_id = String(bot.messages[lastMessageIndex].chat_id);
+        String UserText = bot.messages[lastMessageIndex].text;
+        // chat_id is the identify user and usertext is user's text input 
 
-      #ifdef Debugging_mode_on
-      if (BotMessageStatus) {
-        Serial.println("Bot reply to /help sent successfully");
-      } else {
-        Serial.println("Bot FAILED to reply to /help");
+        if (UserText == "/help") {
+          String HelpMessage = "1. /function 1 (...) \n"
+                              "2. /function 1 (...) \n"
+                              "3. /function 1 (...) \n";
+          bool BotMessageStatus = bot.sendMessage(chat_id, HelpMessage, ""); //return value is if the messages sent succesfully
+
+          #ifdef Debugging_mode_on
+          if (BotMessageStatus) {
+            Serial.println("Bot reply to /help sent successfully");
+          } else {
+            Serial.println("Bot FAILED to reply to /help");
+          }
+          #endif
+
+          // Implement Logging Accordingly "/help during" + TIME + ", bot reply status" + BotMessageStatus
+        } else if (UserText == "/update") {
+          
+          bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
+
+          #ifdef Debugging_mode_on
+          if (BotUpdateStatus) {
+            Serial.println("Bot sent photo update successfully");
+          } else {
+            Serial.println("Bot FAILED to send Photo update");
+          }
+          #endif
+
+          // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
+        } else if (UserText == "/RecurringUpdate") {
+          
+          bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
+
+          #ifdef Debugging_mode_on
+          if (BotUpdateStatus) {
+            Serial.println("Bot sent photo update successfully");
+          } else {
+            Serial.println("Bot FAILED to send Photo update");
+          }
+          #endif
+
+          // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
+        } else {
+          //no matching command
+          String HelpMessage = "1. /function 1 (...) \n"
+                              "2. /function 1 (...) \n"
+                              "3. /function 1 (...) \n";
+          bot.sendMessage(chat_id, HelpMessage, "");
+
+          #ifdef Debugging_mode_on
+          Serial.println("input not recognised");
+          //log no matching command
+          #endif
+
+        }
       }
-      #endif
+      break; //break out of DEFAULT_POLLING_STATE
+  
+    case AWAITING_COMMAND:
+      for (int i = 0; i < numNewMessages; i++) {
+      String chat_id = String(bot.messages[i].chat_id);
+      String UserText = bot.messages[i].text;
 
-      // Implement Logging Accordingly "/help during" + TIME + ", bot reply status" + BotMessageStatus
-    }
-
-    if (UserText == "/update") {
-      
-      bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
-
-      #ifdef Debugging_mode_on
-      if (BotUpdateStatus) {
-        Serial.println("Bot sent photo update successfully");
-      } else {
-        Serial.println("Bot FAILED to send Photo update");
-      }
-      #endif
-
-      // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
-    }
-
-
-    if (UserText == "/RecurringUpdate") {
-      
-      bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
-
-      #ifdef Debugging_mode_on
-      if (BotUpdateStatus) {
-        Serial.println("Bot sent photo update successfully");
-      } else {
-        Serial.println("Bot FAILED to send Photo update");
-      }
-      #endif
-
-      // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
     }
   }
 }
-
 bool UpdateSingularPhoto(String chat_id) {
 
 }
@@ -124,7 +151,7 @@ bool UpdateRecurringPhoto(String chat_id) {
   long update_duration_in_ms;
   // have to implement states int the funcion
 
-  
+
 }
 
 
