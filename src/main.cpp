@@ -3,8 +3,8 @@
 
 void HandleNewMessages(int numNewMessages);
 
-
-
+bool UpdateSingularPhoto(String chat_id);
+bool UpdateRecurringPhoto(String chat_id);
 
 
 WiFiClientSecure secured_client;
@@ -61,10 +61,10 @@ void HandleNewMessages(int numNewMessages) {
     // chat_id is the identify user and usertext is user's text input 
 
     if (UserText == "/help") {
-      String helpMessage = "1. /function 1 (...) \n"
+      String HelpMessage = "1. /function 1 (...) \n"
                            "2. /function 1 (...) \n"
                            "3. /function 1 (...) \n";
-      bool BotMessageStatus = bot.sendMessage(chat_id, helpMessage, ""); //return value is if the messages sent succesfully
+      bool BotMessageStatus = bot.sendMessage(chat_id, HelpMessage, ""); //return value is if the messages sent succesfully
 
       #ifdef Debugging_mode_on
       if (BotMessageStatus) {
@@ -77,7 +77,55 @@ void HandleNewMessages(int numNewMessages) {
       // Implement Logging Accordingly "/help during" + TIME + ", bot reply status" + BotMessageStatus
     }
 
+    if (UserText == "/update") {
+      
+      bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
+
+      #ifdef Debugging_mode_on
+      if (BotUpdateStatus) {
+        Serial.println("Bot sent photo update successfully");
+      } else {
+        Serial.println("Bot FAILED to send Photo update");
+      }
+      #endif
+
+      // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
+    }
+
+
+    if (UserText == "/RecurringUpdate") {
+      
+      bool BotUpdateStatus = UpdateSingularPhoto(chat_id);
+
+      #ifdef Debugging_mode_on
+      if (BotUpdateStatus) {
+        Serial.println("Bot sent photo update successfully");
+      } else {
+        Serial.println("Bot FAILED to send Photo update");
+      }
+      #endif
+
+      // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
+    }
   }
 }
+
+bool UpdateSingularPhoto(String chat_id) {
+
+}
+
+bool UpdateRecurringPhoto(String chat_id) {
+  // Send message asking for 1st input --> update the states in enum
+  // repeatedly try to recieve numNewMessages until timeout --> HandleNewMessages to retrive reply
+  // Second message asking for 2nd input --> update state to pending input --> Handle New Messages to retrieve reply --> update state back to normal state
+  // actually call function --> check for new message, if numNewMessages !=0 , use as interrupt
+
+  long ms_between_updates;
+  long update_duration_in_ms;
+  // have to implement states int the funcion
+
+  
+}
+
 
 
