@@ -9,10 +9,16 @@ bool UpdateRecurringPhoto(String chat_id);
 enum botStateDtype {
   AWAITING_COMMAND,
   DEFAULT_POLLING_STATE,
-  USER_INTERRUPT 
+  EXECUTING_RECURRING_UPDATE //
+};
+
+enum botCommandType {
+  IMAGE_UPDATE_DURATION_QUERY,
+  IMAGE_UPDATE_INTERVAL_QUERY
 };
 
 botStateDtype BotState = DEFAULT_POLLING_STATE; //initialize to default state
+botCommandType ExpectedCommandReturn = IMAGE_UPDATE_DURATION_QUERY; //initialize to first query
 
 WiFiClientSecure secured_client;
 UniversalTelegramBot bot(BotToken, secured_client);
@@ -31,10 +37,12 @@ void setup() {
   }
 
   secured_client.setInsecure(); //im not interested in the response certificate
+  last_bot_poll_time = millis(); //initialize last_bot_poll_time
 }
 
 void loop() {
-  if (millis() - last_bot_poll_time > 20000) { // 20 seconds after previous poll
+  //default polling state
+  if (millis() - last_bot_poll_time > 20000 && BotState == DEFAULT_POLLING_STATE) { // 20 seconds after previous poll if in normal polling state
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     if (numNewMessages > 0) {
       
@@ -43,21 +51,25 @@ void loop() {
       #endif
 
       HandleNewMessages(numNewMessages);
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1); //offset so that it checkes the next "update" in the API for a return
     }
     last_bot_poll_time = millis();
+
     #ifdef Debugging_mode_on
-    Serial.println("Last_bot_poll_time is: " + last_bot_poll_time);
+    Serial.println("Bot State is DEDAULT_POLLING_STATE \n Last_bot_poll_time is: " + last_bot_poll_time);
     #endif
     // log the completion of the function? TBC
-
-  }
-  delay(5000);
+    delay(5000);
 
   //Check for logs and memory use, clear accordinly to conserve memory
   #ifdef Debugging_mode_on
   // Serial.print if logs were cleared or not cleared
   #endif
+  }
+
+  // Polling under non default polling state, check for update every second from user
+  if (BotState != DEFAULT_POLLING_STATE && millis() - last_bot_poll_time > 2000) {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+  }
 
 }
 
@@ -130,11 +142,20 @@ void HandleNewMessages(int numNewMessages) {
       break; //break out of DEFAULT_POLLING_STATE
   
     case AWAITING_COMMAND:
-      for (int i = 0; i < numNewMessages; i++) {
-      String chat_id = String(bot.messages[i].chat_id);
-      String UserText = bot.messages[i].text;
+      int lastMessageIndex = numNewMessages - 1; //we are only going to process the latest text in the batch
+      String chat_id = String(bot.messages[lastMessageIndex].chat_id);
+      String UserText = bot.messages[lastMessageIndex].text;
+      // Awaiting command will behave differently based off ExpectedCommandReturn
+      switch(ExpectedCommandReturn) {
+        case IMAGE_UPDATE_DURATION_QUERY:
+          //handle the return val
 
-    }
+          break;
+        case IMAGE_UPDATE_INTERVAL_QUERY:
+          //handle the return val
+
+          break;
+      }
   }
 }
 bool UpdateSingularPhoto(String chat_id) {
