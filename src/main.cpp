@@ -191,7 +191,6 @@ void HandleTimeout() {
 }
 
 
-
 bool UpdateSingularPhoto(String chat_id) {
 
 }
