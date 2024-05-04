@@ -193,6 +193,7 @@ void HandleTimeout() {
 
 bool UpdateSingularPhoto(String chat_id) {
 
+  return true;
 }
 
 bool UpdateRecurringPhotoSetup(String chat_id) {
