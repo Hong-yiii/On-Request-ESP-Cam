@@ -4,7 +4,7 @@
 void HandleNewMessages(int numNewMessages);
 
 bool UpdateSingularPhoto(String chat_id);
-bool UpdateRecurringPhotoSetup(String chat_id);
+bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages);
 void HandleTimeout();
 
 enum botStateDtype {
@@ -31,6 +31,9 @@ botExecuteType BotCurrentExecute = NULL_EXECUTE;
 String chat_id;
 unsigned long StartInputTime;
 const unsigned long InputTimeout = 60000; // Timeout in milliseconds (1 minute)
+
+unsigned long ImageUpdateDurationInMs;
+unsigned long ImageUpdateIntervalInMs;
 
 
 WiFiClientSecure secured_client;
@@ -100,7 +103,7 @@ void HandleNewMessages(int numNewMessages) {
   // respond based of BotState
   switch(BotState) {
     case DEFAULT_POLLING_STATE:
-
+    {
       if (numNewMessages > 0) {
         int lastMessageIndex = numNewMessages - 1; //we are only going to process the latest text in the batch
         chat_id = String(bot.messages[lastMessageIndex].chat_id);
@@ -137,15 +140,11 @@ void HandleNewMessages(int numNewMessages) {
           // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
         } else if (UserText == "/RecurringUpdate") {
           
-          bool BotUpdateStatus = UpdateRecurringPhotoSetup(chat_id);
-
           #ifdef Debugging_mode_on
-          if (BotUpdateStatus) {
-            Serial.println("Bot sent photo update successfully");
-          } else {
-            Serial.println("Bot FAILED to send Photo update");
-          }
+          Serial.println("Calling UpdateRecurringPhotoSetup");
           #endif
+
+          bool BotUpdateStatus = UpdateRecurringPhotoSetup(chat_id, numNewMessages);
 
           // Implement Logging Accordingly "/update during" + TIME + ", bot reply status" + BotMessageStatus
         } else {
@@ -163,22 +162,61 @@ void HandleNewMessages(int numNewMessages) {
         }
       }
       break; //break out of DEFAULT_POLLING_STATE
+    }
   
     case AWAITING_COMMAND:
+    {
       int lastMessageIndex = numNewMessages - 1; //we are only going to process the latest text in the batch
       String chat_id = String(bot.messages[lastMessageIndex].chat_id);
       String UserText = bot.messages[lastMessageIndex].text;
       // Awaiting command will behave differently based off ExpectedCommandReturn
       switch(ExpectedCommandReturn) {
         case IMAGE_UPDATE_DURATION_QUERY:
+        {
           
+          #ifdef Debugging_mode_on
+          Serial.println("Calling updatreSingularPHoto");
+          #endif
 
+          bool BotUpdateStatus = UpdateRecurringPhotoSetup(chat_id, numNewMessages);
+
+          #ifdef Debugging_mode_on
+          if (BotUpdateStatus) {
+            Serial.println("Bot sent photo update successfully");
+          } else {
+            Serial.println("Bot FAILED to send Photo update");
+          }
+          #endif
+          
           break;
+        }
         case IMAGE_UPDATE_INTERVAL_QUERY:
+        {
           //handle the return val
+                    
+          #ifdef Debugging_mode_on
+          Serial.println("Calling updatreSingularPHoto");
+          #endif
 
+          bool BotUpdateStatus = UpdateRecurringPhotoSetup(chat_id, numNewMessages);
+
+          #ifdef Debugging_mode_on
+          if (BotUpdateStatus) {
+            Serial.println("Bot sent photo update successfully");
+          } else {
+            Serial.println("Bot FAILED to send Photo update");
+          }
+          #endif
+          
           break;
+        }
       }
+    }
+    case EXECUTING_COMMAND:
+    {
+
+    }
+    
   }
 }
 
@@ -196,10 +234,13 @@ bool UpdateSingularPhoto(String chat_id) {
   return true;
 }
 
-bool UpdateRecurringPhotoSetup(String chat_id) {
+bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
+  String ImageUpdateDurationInMin;
+
+
   switch(ExpectedCommandReturn) {
     case ERROR_NOT_EXPECTING_INPUT: //first input after /updaterecurringphoto
-      bot.sendMessage(chat_id, "How long do you want to be updated for");
+      bot.sendMessage(chat_id, "How long do you want to be updated for (min) ?");
       StartInputTime = millis();
       ExpectedCommandReturn = IMAGE_UPDATE_DURATION_QUERY;
 
@@ -210,9 +251,19 @@ bool UpdateRecurringPhotoSetup(String chat_id) {
       break;
 
     case IMAGE_UPDATE_DURATION_QUERY:  //second input
-      //process the user message input and write to the global var 
-
+      //process the user message input and write to the global var
+      int lastMessageIndex = numNewMessages - 1;
+      ImageUpdateDurationInMin = bot.messages[lastMessageIndex].text;
+      ImageUpdateDurationInMs = ImageUpdateDurationInMin.toInt() * 60000;
+      
+      bot.sendMessage(chat_id, "What is your desired interval between updates (min) ?");
+      StartInputTime = millis();
       ExpectedCommandReturn = IMAGE_UPDATE_INTERVAL_QUERY;
+
+      #ifdef Debugging_mode_on
+      Serial.println("ExpectedCommmandReturnState has been updaated to IMAGE_UPDATE_DURATION_QUERY");
+      #endif
+
       break;
 
     case IMAGE_UPDATE_INTERVAL_QUERY:
