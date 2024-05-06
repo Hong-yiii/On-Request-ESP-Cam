@@ -43,7 +43,7 @@ UniversalTelegramBot bot(BotToken, secured_client);
 unsigned long last_bot_poll_time; // last time the API poll has been made
 
 void setup() {
-  Serial.begin(11200);
+  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
     Serial.println("Wifi is not WIFIing");
@@ -76,7 +76,6 @@ void loop() {
     Serial.println("Bot State is DEDAULT_POLLING_STATE \n Last_bot_poll_time is: " + last_bot_poll_time);
     #endif
     // log the completion of the function? TBC
-    delay(5000);
 
   //Check for logs and memory use, clear accordinly to conserve memory
   #ifdef Debugging_mode_on
@@ -89,7 +88,7 @@ void loop() {
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     if (numNewMessages > 0) {
       HandleNewMessages(numNewMessages);
-    } else if (millis() - StartInputTime > InputTimeout) {
+    } else if (millis() - StartInputTime > InputTimeout && BotState == AWAITING_COMMAND) {
       // handle timeout
       #ifdef Debugging_mode_on
       Serial.println("timedout, calling timeout function");
@@ -97,6 +96,52 @@ void loop() {
       HandleTimeout();
       last_bot_poll_time = millis();
     }
+  }
+
+  //Polling when executing command
+  if (BotState == EXECUTING_COMMAND) {
+    switch(BotCurrentExecute) {
+        case EXECUTING_RECURRING_UPDATE:
+          if (millis() - LastPhotoUpdateTime > ImageUpdateIntervalInMs) {
+            bool PhotoUpdateStatus = UpdateSingularPhoto(chat_id);
+            LastPhotoUpdateTime = millis();
+            
+            #ifdef Debugging_mode_on
+            Serial.println("Photo updated Succesfully at: " + LastPhotoUpdateTime);
+            Serial.println("ImageUpdateIntervalInMs = " + ImageUpdateDurationInMs);
+            #endif
+            // log photo sending time and PhotoUpdateStatus
+          }
+
+          if (millis() - RecurringUpdateStartTime > ImageUpdateDurationInMs) {
+               
+            #ifdef Debugging_mode_on
+            Serial.println("Recurring Update Function is done");
+            #endif
+            
+            BotState = DEFAULT_POLLING_STATE;
+            BotCurrentExecute = NULL_EXECUTE;
+            
+          }
+          break;
+
+        case NULL_EXECUTE: 
+
+          #ifdef Debugging_mode_on
+          Serial.println("NULL_EXECUTE, there has been a wrongly handled state");
+          #endif 
+
+          break; 
+        
+        default:
+
+          #ifdef Debugging_mode_on
+          Serial.println("fell through to default, Mishandled State");
+          #endif 
+
+          break; 
+
+      }
   }
 
 }
@@ -163,8 +208,9 @@ void HandleNewMessages(int numNewMessages) {
 
         }
       }
-      break; //break out of DEFAULT_POLLING_STATE
+      break; //break out of DEFAULT_POLLING_STATE      
     }
+
   
     case AWAITING_COMMAND:
     {
@@ -214,50 +260,6 @@ void HandleNewMessages(int numNewMessages) {
         }
       }
     }
-    case EXECUTING_COMMAND:
-    {
-      switch(BotCurrentExecute) {
-        case EXECUTING_RECURRING_UPDATE:
-          if (millis() - LastPhotoUpdateTime > ImageUpdateIntervalInMs) {
-            UpdateSingularPhoto(chat_id);
-            LastPhotoUpdateTime = millis();
-            
-            #ifdef Debugging_mode_on
-            Serial.println("Photo updated Succesfully");
-            #endif
-            // log photo sending time
-          }
-
-          if (millis() - RecurringUpdateStartTime > ImageUpdateDurationInMs) {
-              
-            #ifdef Debugging_mode_on
-            Serial.println("Recurring Update Function is done");
-            #endif
-            
-            BotState = DEFAULT_POLLING_STATE;
-            BotCurrentExecute = NULL_EXECUTE;
-            
-          }
-          break;
-
-        case NULL_EXECUTE: 
-
-          #ifdef Debugging_mode_on
-          Serial.println("NULL_EXECUTE, there has been a wrongly handled state");
-          #endif 
-
-          break; 
-        
-        default:
-
-          #ifdef Debugging_mode_on
-          Serial.println("fell through to default, Mishandled State");
-          #endif 
-
-          break; 
-
-      }
-    }
     
   }
 }
@@ -283,12 +285,14 @@ bool UpdateSingularPhoto(String chat_id) {
 bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
   String ImageUpdateDurationInMin;
   String ImageUpdateIntervalInMin;
+  int lastMessageIndex;
 
 
   switch(ExpectedCommandReturn) {
     case ERROR_NOT_EXPECTING_INPUT: //first input after /updaterecurringphoto
       bot.sendMessage(chat_id, "How long do you want to be updated for (min) ?");
       StartInputTime = millis();
+      BotState = AWAITING_COMMAND;
       ExpectedCommandReturn = IMAGE_UPDATE_DURATION_QUERY;
 
       #ifdef Debugging_mode_on
@@ -299,7 +303,7 @@ bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
 
     case IMAGE_UPDATE_DURATION_QUERY:  //second input
       //process the user message input and write to the global var
-      int lastMessageIndex = numNewMessages - 1;
+      lastMessageIndex = numNewMessages - 1;
       ImageUpdateDurationInMin = bot.messages[lastMessageIndex].text;
       ImageUpdateDurationInMs = ImageUpdateDurationInMin.toInt() * 60000;
       
@@ -308,18 +312,17 @@ bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
       ExpectedCommandReturn = IMAGE_UPDATE_INTERVAL_QUERY;
 
       #ifdef Debugging_mode_on
-      Serial.println("ExpectedCommmandReturnState has been updaated to IMAGE_UPDATE_DURATION_QUERY");
+      Serial.println("ExpectedCommmandReturnState has been updaated to IMAGE_UPDATE_INTERVAL_QUERY");
       #endif
 
       break;
 
     case IMAGE_UPDATE_INTERVAL_QUERY:
       //process the second message input and write to global var
-      int lastMessageIndex = numNewMessages - 1;
+      lastMessageIndex = numNewMessages - 1;
       ImageUpdateIntervalInMin = bot.messages[lastMessageIndex].text;
       ImageUpdateIntervalInMs = ImageUpdateIntervalInMin.toInt() * 60000;
       
-      bot.sendMessage(chat_id, "What is your desired interval between updates (min) ?");
       StartInputTime = millis();
 
       #ifdef Debugging_mode_on
@@ -327,7 +330,7 @@ bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
       #endif
 
       ExpectedCommandReturn = ERROR_NOT_EXPECTING_INPUT;
-      BotState = DEFAULT_POLLING_STATE;
+      BotState = EXECUTING_COMMAND;
       BotCurrentExecute = EXECUTING_RECURRING_UPDATE;
       RecurringUpdateStartTime = millis();
       break;
