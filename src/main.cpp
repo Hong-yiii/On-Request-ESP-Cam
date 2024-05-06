@@ -34,6 +34,8 @@ const unsigned long InputTimeout = 60000; // Timeout in milliseconds (1 minute)
 
 unsigned long ImageUpdateDurationInMs;
 unsigned long ImageUpdateIntervalInMs;
+unsigned long RecurringUpdateStartTime; // millis - StartTime > Duration
+unsigned long LastPhotoUpdateTime; //log when the photo is sent
 
 
 WiFiClientSecure secured_client;
@@ -214,7 +216,47 @@ void HandleNewMessages(int numNewMessages) {
     }
     case EXECUTING_COMMAND:
     {
+      switch(BotCurrentExecute) {
+        case EXECUTING_RECURRING_UPDATE:
+          if (millis() - LastPhotoUpdateTime > ImageUpdateIntervalInMs) {
+            UpdateSingularPhoto(chat_id);
+            LastPhotoUpdateTime = millis();
+            
+            #ifdef Debugging_mode_on
+            Serial.println("Photo updated Succesfully");
+            #endif
+            // log photo sending time
+          }
 
+          if (millis() - RecurringUpdateStartTime > ImageUpdateDurationInMs) {
+              
+            #ifdef Debugging_mode_on
+            Serial.println("Recurring Update Function is done");
+            #endif
+            
+            BotState = DEFAULT_POLLING_STATE;
+            BotCurrentExecute = NULL_EXECUTE;
+            
+          }
+          break;
+
+        case NULL_EXECUTE: 
+
+          #ifdef Debugging_mode_on
+          Serial.println("NULL_EXECUTE, there has been a wrongly handled state");
+          #endif 
+
+          break; 
+        
+        default:
+
+          #ifdef Debugging_mode_on
+          Serial.println("fell through to default, Mishandled State");
+          #endif 
+
+          break; 
+
+      }
     }
     
   }
@@ -231,11 +273,16 @@ void HandleTimeout() {
 
 bool UpdateSingularPhoto(String chat_id) {
 
+  #ifdef Debugging_mode_on
+  Serial.println("Sending 1x Photo!");
+  #endif 
+
   return true;
 }
 
 bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
   String ImageUpdateDurationInMin;
+  String ImageUpdateIntervalInMin;
 
 
   switch(ExpectedCommandReturn) {
@@ -268,10 +315,22 @@ bool UpdateRecurringPhotoSetup(String chat_id, int numNewMessages) {
 
     case IMAGE_UPDATE_INTERVAL_QUERY:
       //process the second message input and write to global var
+      int lastMessageIndex = numNewMessages - 1;
+      ImageUpdateIntervalInMin = bot.messages[lastMessageIndex].text;
+      ImageUpdateIntervalInMs = ImageUpdateIntervalInMin.toInt() * 60000;
+      
+      bot.sendMessage(chat_id, "What is your desired interval between updates (min) ?");
+      StartInputTime = millis();
+
+      #ifdef Debugging_mode_on
+      Serial.println("ExpectedCommmandReturnState has been updaated to ERROR_NOT_EXPECTING_INPUT");
+      #endif
 
       ExpectedCommandReturn = ERROR_NOT_EXPECTING_INPUT;
       BotState = DEFAULT_POLLING_STATE;
       BotCurrentExecute = EXECUTING_RECURRING_UPDATE;
+      RecurringUpdateStartTime = millis();
+      break;
 
 
   }
