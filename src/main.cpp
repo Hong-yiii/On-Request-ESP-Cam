@@ -47,7 +47,6 @@ void setup() {
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
     Serial.println("Wifi is not WIFIing");
-    delay(10000);
   }
   // display connected when it has connected
   if( WiFi.status() == WL_CONNECTED) {
@@ -56,10 +55,24 @@ void setup() {
 
   secured_client.setInsecure(); //im not interested in the response certificate
   last_bot_poll_time = millis(); //initialize last_bot_poll_time
+  #ifdef Debugging_mode_on
+  Serial.println(last_bot_poll_time);
+  #endif
+  BotState = DEFAULT_POLLING_STATE;
+  ExpectedCommandReturn = ERROR_NOT_EXPECTING_INPUT;
+  BotCurrentExecute = NULL_EXECUTE;
+  esp_task_wdt_init(WDTO_8S, true); // Set watchdog timeout for 8 seconds and enable panic handler
 }
 
 void loop() {
   //default polling state
+  #ifdef Debugging_mode_on
+  long current_milis = millis();
+  Serial.println(current_milis);
+  delay(2000);
+  esp_task_wdt_reset();
+  #endif
+
   if (millis() - last_bot_poll_time > 20000 && BotState == DEFAULT_POLLING_STATE) { // 20 seconds after previous poll if in normal polling state
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     if (numNewMessages > 0) {
@@ -82,9 +95,8 @@ void loop() {
   // Serial.print if logs were cleared or not cleared
   #endif
   }
-
   // Polling when waiting for new command, check for update every second from user
-  if (BotState != DEFAULT_POLLING_STATE && millis() - last_bot_poll_time > 2000) {
+  if (BotState == AWAITING_COMMAND && millis() - last_bot_poll_time > 2000) {
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     if (numNewMessages > 0) {
       HandleNewMessages(numNewMessages);
@@ -143,7 +155,6 @@ void loop() {
 
       }
   }
-
 }
 
 void HandleNewMessages(int numNewMessages) {
@@ -223,16 +234,16 @@ void HandleNewMessages(int numNewMessages) {
         {
           
           #ifdef Debugging_mode_on
-          Serial.println("Calling updatreSingularPHoto");
+          Serial.println("Calling updatreSingularPHotoSetup");
           #endif
 
           bool BotUpdateStatus = UpdateRecurringPhotoSetup(chat_id, numNewMessages);
 
           #ifdef Debugging_mode_on
           if (BotUpdateStatus) {
-            Serial.println("Bot sent photo update successfully");
+            Serial.println("Bot State update successfully");
           } else {
-            Serial.println("Bot FAILED to send Photo update");
+            Serial.println("Bot State Failed");
           }
           #endif
           
@@ -250,9 +261,9 @@ void HandleNewMessages(int numNewMessages) {
 
           #ifdef Debugging_mode_on
           if (BotUpdateStatus) {
-            Serial.println("Bot sent photo update successfully");
+            Serial.println("Bot State update successfully");
           } else {
-            Serial.println("Bot FAILED to send Photo update");
+            Serial.println("Bot State FAILED ");
           }
           #endif
           
