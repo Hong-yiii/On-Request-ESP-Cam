@@ -1,4 +1,5 @@
 #include <header.h>
+#include <configs.h>
 #define Debugging_mode_on
 
 void HandleNewMessages(int numNewMessages);
@@ -62,6 +63,10 @@ void setup() {
   ExpectedCommandReturn = ERROR_NOT_EXPECTING_INPUT;
   BotCurrentExecute = NULL_EXECUTE;
   esp_task_wdt_init(WDTO_8S, true); // Set watchdog timeout for 8 seconds and enable panic handler
+
+  // Set Up ESP Camera
+  esp_camera_init()
+
 }
 
 void loop() {

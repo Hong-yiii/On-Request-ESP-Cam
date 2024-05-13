@@ -7,3 +7,4 @@
 #include <UniversalTelegramBot.h>
 // #include <SD.h>
 #include "secrets.h"
+#include <esp_camera.h>
