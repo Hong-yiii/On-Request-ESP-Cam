@@ -65,7 +65,16 @@ void setup() {
   esp_task_wdt_init(WDTO_8S, true); // Set watchdog timeout for 8 seconds and enable panic handler
 
   // Set Up ESP Camera
-  esp_camera_init()
+  esp_err_t cam_init_res = esp_camera_init(&camera_config);
+  if (cam_init_res != ESP_OK) {
+    Serial.println("Camera init failed");
+    return;
+  }
+
+
+  #ifdef Debugging_mode_on
+  Serial.println("Setup complete");
+  #endif
 
 }
 
